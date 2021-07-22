@@ -4,6 +4,7 @@ package com.itlize.koreraprojectadv.Controller;
 import com.itlize.koreraprojectadv.Entity.Project;
 import com.itlize.koreraprojectadv.Entity.ProjectResource;
 import com.itlize.koreraprojectadv.Entity.Resource;
+import com.itlize.koreraprojectadv.Repository.ProjectRepository;
 import com.itlize.koreraprojectadv.Service.ProjectResourceService;
 import com.itlize.koreraprojectadv.Service.ProjectService;
 import com.itlize.koreraprojectadv.Service.ResourceService;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/project")
@@ -30,19 +32,18 @@ public class ProjectController {
 
 
     @PostMapping("/createProject")
-    private ResponseEntity<?> createProject(Principal principal,
-                                         @RequestParam(name="projectName") String projectName)
+    private ResponseEntity<?> createProject(@RequestBody Project project)
     {
-        Project projectToAdd = new Project();
-        projectToAdd.setProjectName(projectName);
-        projectService.save(projectToAdd);
 
-        return new ResponseEntity<>(projectToAdd, HttpStatus.CREATED);
+
+        projectService.save(project);
+
+        return new ResponseEntity<>(project, HttpStatus.CREATED);
     }
 
     @GetMapping("/getProject")
-    private ResponseEntity<?> getProject(Principal principal,
-                                         @RequestParam(name = "projectName") String projectName)
+    private ResponseEntity<?> getProject(
+                                         @RequestParam String projectName)
     {
         Project project =projectService.findProjectByName(projectName);
         if(project == null)
@@ -66,10 +67,13 @@ public class ProjectController {
     }
 
     @PostMapping("/addResourceToProject")
-    private ResponseEntity<?> addResourceToproject(@RequestBody Resource resource,
-                                                   @RequestBody Project project)
+    private ResponseEntity<?> addResourceToproject(@RequestParam Long resourceId,
+                                                   @RequestParam Integer projectId)
+
     {
-        Boolean projectExist = projectService.projectExist(project);
+        Project project = projectService.getAProjectById(projectId);
+        Resource resource = resourceService.findOneResourceById(resourceId);
+        Boolean projectExist = projectService.projectExist(  project);
         Boolean resourceExist = resourceService.resourceExist(resource);
 
         if(!projectExist){
@@ -86,9 +90,12 @@ public class ProjectController {
     }
 
     @PostMapping("/deleteResourceFromProject")
-       public ResponseEntity<?> deleteResourceFromProject(@RequestBody Resource resource,
-                                                          @RequestBody Project project)
+       public ResponseEntity<?> deleteResourceFromProject(@RequestParam Long resourceId,
+                                                          @RequestParam Integer projectId)
     {
+        Project project = projectService.getAProjectById(projectId);
+        Resource resource = resourceService.findOneResourceById(resourceId);
+
         Boolean projectExist = projectService.projectExist(project);
         Boolean resourceExist = resourceService.resourceExist(resource);
 
@@ -99,8 +106,12 @@ public class ProjectController {
             return new ResponseEntity<>("Did not find the resource",HttpStatus.BAD_REQUEST);
         }
 
-        projectResourceService.deleteResourceFromProject(resource,project);
+        List<ProjectResource> projectResourceList =projectResourceService.getProjectResourcesByPR(project,resource);
 
+        ProjectResource projectResource= projectResourceList.get(0);
+        System.out.println(projectResource);
+
+        projectResourceService.delete(projectResource);
         return new ResponseEntity<>("Delete Resource from project", HttpStatus.OK);
     }
 
